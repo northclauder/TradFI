@@ -32,6 +32,10 @@ contract MarketCalendar is Ownable {
     /// @notice Highest year with calendar data, for transparency/frontends.
     uint256 public lastCalendarYear;
 
+    uint256 internal constant OPEN_SECONDS = 9 hours + 30 minutes; // 09:30:00 ET
+    uint256 internal constant CLOSE_SECONDS = 16 hours; // 16:00:00 ET
+    uint256 internal constant HALF_CLOSE_SECONDS = 13 hours; // 13:00:00 ET
+
     error CalendarYearNotFuture();
     error InvalidDate();
 
@@ -49,6 +53,32 @@ contract MarketCalendar is Ownable {
         uint256 dstEnd =
             DateTimeLib.dateToEpochDay(y, 11, DateTimeLib.nthSundayOfMonth(y, 11, 1)) * 86400 + 6 hours;
         return (timestamp >= dstStart && timestamp < dstEnd) ? 4 hours : 5 hours;
+    }
+
+    /// @notice True if the market is open right now.
+    function isMarketOpen() external view returns (bool) {
+        return isMarketOpenAt(block.timestamp);
+    }
+
+    /// @notice True if the market is open at the given UTC timestamp.
+    function isMarketOpenAt(uint256 timestamp) public view returns (bool) {
+        uint256 et = timestamp - etOffsetSeconds(timestamp);
+        uint256 epochDay = et / 86400;
+        if (!_isTradingDay(epochDay)) return false;
+        (uint256 y, uint256 m, uint256 d) = DateTimeLib.epochDayToDate(epochDay);
+        uint256 closeAt = dayStatus[y * 10000 + m * 100 + d] == DayStatus.HalfDay
+            ? HALF_CLOSE_SECONDS
+            : CLOSE_SECONDS;
+        uint256 secondsIntoDay = et % 86400;
+        return secondsIntoDay >= OPEN_SECONDS && secondsIntoDay < closeAt;
+    }
+
+    /// @dev A weekday that is not a full holiday (half days are trading days).
+    function _isTradingDay(uint256 epochDay) internal view returns (bool) {
+        uint256 wd = DateTimeLib.weekday(epochDay);
+        if (wd == 0 || wd == 6) return false; // Sunday / Saturday
+        (uint256 y, uint256 m, uint256 d) = DateTimeLib.epochDayToDate(epochDay);
+        return dayStatus[y * 10000 + m * 100 + d] != DayStatus.Holiday;
     }
 
     function _setEntries(CalendarDate[] memory entries) internal {
