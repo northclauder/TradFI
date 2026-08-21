@@ -88,6 +88,27 @@ contract MarketCalendar is Ownable {
         return secondsIntoDay >= OPEN_SECONDS && secondsIntoDay < closeAt;
     }
 
+    /// @notice Next timestamp at/after `timestamp` when the market is open.
+    ///         Returns `timestamp` itself if the market is already open.
+    ///         Returns 0 if no open is found within 14 days (only possible with
+    ///         a pathological calendar).
+    function nextOpen(uint256 timestamp) public view returns (uint256) {
+        if (isMarketOpenAt(timestamp)) return timestamp;
+        uint256 et = timestamp - etOffsetSeconds(timestamp);
+        uint256 epochDay = et / 86400;
+        // candidate is today only when we are before today's open on a trading day
+        if (!(et % 86400 < OPEN_SECONDS && _isTradingDay(epochDay))) epochDay++;
+        for (uint256 i = 0; i < 14; i++) {
+            if (_isTradingDay(epochDay + i)) {
+                uint256 etOpen = (epochDay + i) * 86400 + OPEN_SECONDS;
+                // ET wall -> UTC; the offset at 09:30 ET is unambiguous since
+                // DST switches at 02:00 local time
+                return etOpen + etOffsetSeconds(etOpen + 5 hours);
+            }
+        }
+        return 0;
+    }
+
     /// @dev A weekday that is not a full holiday (half days are trading days).
     function _isTradingDay(uint256 epochDay) internal view returns (bool) {
         uint256 wd = DateTimeLib.weekday(epochDay);
