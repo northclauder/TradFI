@@ -55,6 +55,21 @@ contract MarketCalendar is Ownable {
         return (timestamp >= dstStart && timestamp < dstEnd) ? 4 hours : 5 hours;
     }
 
+    /// @notice Set calendar data for a FUTURE year (in ET). The current and past
+    ///         years can never be changed, so the market cannot be manipulated
+    ///         same-day. Every entry must belong to `year`.
+    function setCalendar(uint16 year, CalendarDate[] calldata entries) external onlyOwner {
+        uint256 nowEt = block.timestamp - etOffsetSeconds(block.timestamp);
+        (uint256 currentYear,,) = DateTimeLib.epochDayToDate(nowEt / 86400);
+        if (year <= currentYear) revert CalendarYearNotFuture();
+        CalendarDate[] memory mem = new CalendarDate[](entries.length);
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (entries[i].year != year) revert InvalidDate();
+            mem[i] = entries[i];
+        }
+        _setEntries(mem);
+    }
+
     /// @notice True if the market is open right now.
     function isMarketOpen() external view returns (bool) {
         return isMarketOpenAt(block.timestamp);
