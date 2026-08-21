@@ -33,7 +33,7 @@ contract DeployFlowTest is PosmTestSetup {
                 permit2: permit2,
                 weth: IERC20(address(weth)),
                 wethAmount: WETH_AMOUNT,
-                sqrtPriceX96: SQRT_PRICE_1_1,
+                sqrtPriceX96: 0, // exercise the auto-derived price path
                 create2Deployer: address(this)
             })
         );
@@ -96,6 +96,13 @@ contract DeployFlowTest is PosmTestSetup {
 
     function test_hookAddressHasOnlyBeforeSwapFlag() public view {
         assertEq(uint160(address(r.hook)) & uint160((1 << 14) - 1), uint160(1 << 7));
+    }
+
+    function test_autoSqrtPrice() public pure {
+        // equal amounts -> 1:1 price
+        assertEq(DeployLib.initialSqrtPriceX96(1e18, 1e18), 79228162514264337593543950336);
+        // 4x amount1 per amount0 -> price 4 -> sqrtPrice 2 * Q96
+        assertEq(DeployLib.initialSqrtPriceX96(1e18, 4e18), 2 * 79228162514264337593543950336);
     }
 
     function test_calendarOwnerIsConfiguredOwner() public view {

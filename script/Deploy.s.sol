@@ -17,7 +17,9 @@ import {DeployLib} from "./DeployLib.sol";
 ///   PERMIT2           - Permit2 (canonical: 0x000000000022D473030F116dDEE9F6B43aC78BA3)
 ///   WETH              - wrapped native token to pair against
 ///   WETH_AMOUNT       - initial liquidity in WETH wei
-///   SQRT_PRICE_X96    - initial pool price (for the SORTED currency pair!)
+///   SQRT_PRICE_X96    - optional; initial pool price for the SORTED pair.
+///                       Omit (or 0) to derive it from WETH_AMOUNT vs supply,
+///                       which guarantees a dust-free seed.
 ///   OWNER             - calendar admin + fee collector (defaults to broadcaster)
 ///
 /// The broadcaster must hold WETH_AMOUNT of WETH. Never put a private key in
@@ -34,7 +36,7 @@ contract DeployScript is Script {
             permit2: IAllowanceTransfer(vm.envAddress("PERMIT2")),
             weth: IERC20(vm.envAddress("WETH")),
             wethAmount: vm.envUint("WETH_AMOUNT"),
-            sqrtPriceX96: uint160(vm.envUint("SQRT_PRICE_X96")),
+            sqrtPriceX96: uint160(vm.envOr("SQRT_PRICE_X96", uint256(0))),
             create2Deployer: CREATE2_DEPLOYER
         });
 

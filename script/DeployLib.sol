@@ -7,6 +7,8 @@ import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {Currency} from "v4-core/src/types/Currency.sol";
 import {TickMath} from "v4-core/src/libraries/TickMath.sol";
+import {FullMath} from "v4-core/src/libraries/FullMath.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
 import {LiquidityAmounts} from "v4-periphery/src/libraries/LiquidityAmounts.sol";
@@ -43,7 +45,7 @@ library DeployLib {
         IAllowanceTransfer permit2;
         IERC20 weth;
         uint256 wethAmount;
-        uint160 sqrtPriceX96; // initial price for the sorted (currency0/currency1) pair
+        uint160 sqrtPriceX96; // initial price for the sorted pair; 0 = derive from amounts
         address create2Deployer; // who executes CREATE2 for the hook (differs script vs test)
     }
 
@@ -87,6 +89,12 @@ library DeployLib {
             tickSpacing: TICK_SPACING,
             hooks: IHooks(address(r.hook))
         });
+        if (p.sqrtPriceX96 == 0) {
+            p.sqrtPriceX96 = initialSqrtPriceX96(
+                tokenIs0 ? tokenAmount : p.wethAmount,
+                tokenIs0 ? p.wethAmount : tokenAmount
+            );
+        }
         initPoolAndApprovals(r, p);
 
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -116,6 +124,17 @@ library DeployLib {
 
         // 5. register the lock
         r.lock.lock(r.tokenId);
+    }
+
+    /// @notice The sqrtPriceX96 at which the pool holds exactly amount0:amount1,
+    ///         i.e. sqrt(amount1/amount0) in Q96. Used when Params.sqrtPriceX96
+    ///         is 0 so the initial price always matches the seeded amounts.
+    function initialSqrtPriceX96(uint256 amount0, uint256 amount1)
+        internal
+        pure
+        returns (uint160)
+    {
+        return uint160(Math.sqrt(FullMath.mulDiv(amount1, 1 << 192, amount0)));
     }
 
     /// @notice Burn whatever supply the mint left with the deployer (rounding

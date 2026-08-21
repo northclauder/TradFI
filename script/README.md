@@ -18,28 +18,45 @@ The exact sequence is integration-tested in `test/DeployFlow.t.sol`.
    reverts (`TooMuchDust`) — that means `SQRT_PRICE_X96` and `WETH_AMOUNT`
    are inconsistent.
 
-## Choosing SQRT_PRICE_X96
+## SQRT_PRICE_X96 is optional
 
-`sqrtPriceX96 = sqrt(price) * 2^96`, where `price = currency1/currency0` in the
-**sorted** pair (lower address = currency0). Whether TRADFI is currency0 depends
-on its deployed address, which depends on the broadcaster nonce. Compute the
-token address ahead of time (`vm.computeCreateAddress` in chisel, or run the
-script's simulation first — it prints all addresses without broadcasting), then
-derive the price so that `WETH_AMOUNT` matches the full token supply at that
-price. Sanity check: the simulation must NOT revert with `TooMuchDust`.
+Leave it unset: the script derives the initial price from `WETH_AMOUNT` vs the
+full token supply *after* the token address is known, so the seed is dust-free
+by construction and the sort-order footgun disappears. Only set it explicitly
+if you want an initial price that differs from the seeded ratio (then the
+`TooMuchDust` guard still protects against gross mismatch).
+
+## Verified addresses (checked on-chain 2026-08-21)
+
+Uniswap v4 uses the SAME addresses on Robinhood Chain mainnet (4663) and
+testnet (46630) — deterministic deployments, verified by probing both RPCs:
+
+| Contract | Address |
+|---|---|
+| PoolManager | `0x8366a39CC670B4001A1121B8F6A443A643e40951` |
+| PositionManager | `0x58daec3116aae6d93017baaea7749052e8a04fa7` |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+| WETH9 | `0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73` |
+
+(WETH9 read from `PositionManager.WETH9()` on both networks. Re-verify before
+mainnet broadcast anyway.)
 
 ## Testnet rehearsal (do this first)
 
+PowerShell (RPC read from `.env`, key via foundry keystore):
+
+```powershell
+$env:POOL_MANAGER='0x8366a39CC670B4001A1121B8F6A443A643e40951'
+$env:POSITION_MANAGER='0x58daec3116aae6d93017baaea7749052e8a04fa7'
+$env:PERMIT2='0x000000000022D473030F116dDEE9F6B43aC78BA3'
+$env:WETH='0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73'
+$env:WETH_AMOUNT='100000000000000000'   # 0.1 WETH for rehearsal
+$rpc = (Get-Content .env | Where-Object { $_ -match '^RPC_ROBINHOOD_TESTNET=' }).Substring(22)
+forge script script/Deploy.s.sol --rpc-url $rpc --account tradfi-testnet --broadcast -vvv
 ```
-export RPC_URL=<robinhood chain testnet rpc>
-export POOL_MANAGER=<v4 PoolManager on testnet>
-export POSITION_MANAGER=<v4 PositionManager on testnet>
-export PERMIT2=0x000000000022D473030F116dDEE9F6B43aC78BA3
-export WETH=<WETH on testnet>
-export WETH_AMOUNT=<wei>
-export SQRT_PRICE_X96=<price>
-forge script script/Deploy.s.sol --rpc-url $RPC_URL --account <keystore> --broadcast -vvv
-```
+
+The broadcaster needs testnet ETH for gas plus 0.1 wrapped WETH
+(`cast send $env:WETH "deposit()" --value 0.1ether ...` wraps native ETH).
 
 Then, on the testnet deployment, verify by hand:
 - swap succeeds during NYSE hours, reverts with `MarketClosed(nextOpen)` outside
