@@ -1,66 +1,42 @@
-## Foundry
+# TradFI — the memecoin that keeps banker's hours
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+TRADFI trades **only when the NYSE is open**: 9:30–16:00 ET, Monday–Friday,
+closed on NYSE holidays, 13:00 close on half days. Outside those hours every
+swap reverts with `MarketClosed(nextOpen)`. Sorry, market's closed.
 
-Foundry consists of:
+Chain: **Robinhood Chain** (chain id 4663). Venue: **Uniswap v4**.
+Supply: **1,792,000,000** (the NYSE was founded in 1792). Fair launch: 100% of
+supply in the pool, LP permanently locked, 1% swap fee collectable by the team.
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Contracts
 
-## Documentation
+| Contract | Purpose |
+|---|---|
+| [`src/TradFI.sol`](src/TradFI.sol) | Plain OZ ERC-20. No tax, no owner, no tricks — scanner-proof by design. |
+| [`src/MarketCalendar.sol`](src/MarketCalendar.sol) | `isMarketOpen()` on-chain: UTC→ET with deterministic DST, stored NYSE holidays/half-days, `nextOpen()` for countdowns. Admin can only set **future** years. |
+| [`src/CalendarData2026_2027.sol`](src/CalendarData2026_2027.sol) | Official NYSE 2026–2027 calendar (verified against the NYSE Group announcement). |
+| [`src/NYSEHoursHook.sol`](src/NYSEHoursHook.sol) | v4 hook, `beforeSwap` only: reverts outside market hours. Liquidity ops are never gated. |
+| [`src/LPLock.sol`](src/LPLock.sol) | Holds the LP position forever. Owner's only power: `collectFees`. |
 
-https://book.getfoundry.sh/
+## Develop
 
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+forge test          # 68 tests: DST edges, full 2026 day sweep, v4 integration, deploy flow
 ```
 
-### Test
+Fork test against the real Robinhood Chain PoolManager (needs a keyed RPC —
+the public endpoint blocks non-browser clients):
 
-```shell
-$ forge test
+```bash
+RUN_FORK=1 RPC_ROBINHOOD=<url> forge test --match-contract ForkTest
 ```
 
-### Format
+## Deploy
 
-```shell
-$ forge fmt
-```
+See [`script/README.md`](script/README.md). One broadcast; the position is
+minted directly into the lock — unlocked liquidity never exists.
 
-### Gas Snapshots
+## Design docs
 
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- Spec: [`docs/superpowers/specs/2026-08-21-tradfi-v1-design.md`](docs/superpowers/specs/2026-08-21-tradfi-v1-design.md)
+- Plan: [`docs/superpowers/plans/2026-08-21-tradfi-v1.md`](docs/superpowers/plans/2026-08-21-tradfi-v1.md)
