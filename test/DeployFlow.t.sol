@@ -34,7 +34,8 @@ contract DeployFlowTest is PosmTestSetup {
                 weth: IERC20(address(weth)),
                 wethAmount: WETH_AMOUNT,
                 sqrtPriceX96: 0, // exercise the auto-derived price path
-                create2Deployer: address(this)
+                create2Deployer: address(this),
+                calendarOverride: address(0)
             })
         );
         DeployLib.burnDust(r.token, address(this));

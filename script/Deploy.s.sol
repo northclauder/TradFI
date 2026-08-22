@@ -37,7 +37,8 @@ contract DeployScript is Script {
             weth: IERC20(vm.envAddress("WETH")),
             wethAmount: vm.envUint("WETH_AMOUNT"),
             sqrtPriceX96: uint160(vm.envOr("SQRT_PRICE_X96", uint256(0))),
-            create2Deployer: CREATE2_DEPLOYER
+            create2Deployer: CREATE2_DEPLOYER,
+            calendarOverride: address(0) // mainnet path always deploys the real calendar
         });
 
         vm.startBroadcast();

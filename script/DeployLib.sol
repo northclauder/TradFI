@@ -47,6 +47,7 @@ library DeployLib {
         uint256 wethAmount;
         uint160 sqrtPriceX96; // initial price for the sorted pair; 0 = derive from amounts
         address create2Deployer; // who executes CREATE2 for the hook (differs script vs test)
+        address calendarOverride; // TEST-ONLY: use this calendar instead of deploying the real one
     }
 
     struct Result {
@@ -62,8 +63,10 @@ library DeployLib {
     error TooMuchDust();
 
     function run(Params memory p) internal returns (Result memory r) {
-        // 1. calendar
-        r.calendar = new MarketCalendar(p.owner, CalendarData2026_2027.entries());
+        // 1. calendar (a test override skips deploying the real NYSE calendar)
+        r.calendar = p.calendarOverride != address(0)
+            ? MarketCalendar(p.calendarOverride)
+            : new MarketCalendar(p.owner, CalendarData2026_2027.entries());
 
         // 2. hook at a mined CREATE2 address with exactly BEFORE_SWAP_FLAG
         (address hookAddr, bytes32 salt) = HookMiner.find(
