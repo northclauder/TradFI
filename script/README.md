@@ -41,6 +41,28 @@ testnet (46630) — deterministic deployments, verified by probing both RPCs:
 (WETH9 read from `PositionManager.WETH9()` on both networks. Re-verify before
 mainnet broadcast anyway.)
 
+**WARNING — learned in rehearsal:** `PositionManager.WETH9()` on TESTNET points
+at the mainnet WETH address, where no contract exists on testnet. Always verify
+`cast code <WETH> --rpc-url <rpc>` returns bytecode before wrapping/deploying.
+The actual, verified testnet WETH is `0x33e4191705c386532ba27cBF171Db86919200B94`.
+
+## Testnet rehearsal record (2026-08-22, chain 46630)
+
+Deployed and verified on-chain — all checks passed (closed-Saturday gate,
+`MarketClosed(nextOpen)` revert via eth_call as PoolManager, position locked in
+LPLock, deployer supply 0, dust burned):
+
+| Contract | Address |
+|---|---|
+| TradFI | `0x31200377343522Bf566d3627768b9CcDb26bfFf4` |
+| MarketCalendar | `0xdC9A372eFaB73F3D45E01ECE286d6be614a5E693` |
+| NYSEHoursHook | `0x4e0279E43bE4C61Ee09654c5261f2C0882080080` |
+| LPLock | `0x50Ba6AC66A43194530905F646b49b6aFe8F83978` |
+| Position tokenId | 1166 |
+
+Remaining rehearsal step: a real swap during market hours (Mon 9:30 ET+),
+e.g. via the testnet Universal Router or a PoolSwapTest router.
+
 ## Testnet rehearsal (do this first)
 
 PowerShell (RPC read from `.env`, key via foundry keystore):
