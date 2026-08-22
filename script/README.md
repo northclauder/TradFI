@@ -63,6 +63,31 @@ LPLock, deployer supply 0, dust burned):
 Remaining rehearsal step: a real swap during market hours (Mon 9:30 ET+),
 e.g. via the testnet Universal Router or a PoolSwapTest router.
 
+## Compressed-schedule test launch (2026-08-22, chain 46630)
+
+Second instance with `TestWindowsCalendar` (10 min open / 10 min closed) to
+prove the full trade cycle without waiting for NYSE hours. Same hook/token/
+lock code as the real launch. ALL PROVEN WITH REAL TRANSACTIONS:
+
+| Contract | Address |
+|---|---|
+| TEST token | `0x8afdCCd79D9415A565713B660250b6d09B739c9a` |
+| TestWindowsCalendar | `0x3FAc0be087eba472192d1286f80b653f5e474d93` |
+| NYSEHoursHook | `0xEa21a36BB3B3F44262368B10eC01f5B35c178080` |
+| LPLock | `0x2878C5bA7bFc77a94AAF9D17F8C228Ad0c915CC5` |
+| PoolSwapTest router | `0x9DeecE36e4202b65bf1d1e941AAE0C2aC6b7a475` |
+
+- Closed window: `beforeSwap` reverted `MarketClosed(nextOpen)` (eth_call as PoolManager)
+- Open window: real swap succeeded — 0.00005 WETH -> 84.5M TEST
+  (tx in broadcast/SwapTest.s.sol/46630/)
+- `collectFees` paid exactly 1% of swap volume to the recipient
+  (tx `0x013b6398c7c8...`)
+
+Lessons folded back into the code/runbook:
+- WETH is CONSUMED by each deploy — check the deployer's WETH balance before
+  every rehearsal run (preflight.ps1 prints it; read the number!).
+- 1 ppm liquidity margin added in DeployLib vs mint round-up at skewed ratios.
+
 ## Testnet rehearsal (do this first)
 
 PowerShell (RPC read from `.env`, key via foundry keystore):
