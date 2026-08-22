@@ -47,7 +47,7 @@ contract LPLock is Ownable, IERC721Receiver {
         bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(tokenId, uint256(0), uint128(0), uint128(0), bytes(""));
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1, to);
-        positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp);
+        positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp + 1 days);
     }
 
     function onERC721Received(address, address, uint256, bytes calldata)

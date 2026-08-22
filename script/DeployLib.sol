@@ -120,7 +120,9 @@ library DeployLib {
             bytes("")
         );
         params[1] = abi.encode(r.key.currency0, r.key.currency1);
-        p.positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp);
+        // generous deadline: forge scripts simulate and broadcast in separate
+        // phases, so block.timestamp alone is already stale at broadcast time
+        p.positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp + 1 days);
 
         // 5. register the lock
         r.lock.lock(r.tokenId);
