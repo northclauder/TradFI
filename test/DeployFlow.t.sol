@@ -18,12 +18,23 @@ contract DeployFlowTest is PosmTestSetup {
 
     uint256 constant WETH_AMOUNT = 1_792_000_000e18; // 1:1 price for the test
 
+    /// overridden by DeployFlowSkewedTest to rerun the suite at a launch-like ratio
+    function _wethAmount() internal pure virtual returns (uint256) {
+        return WETH_AMOUNT;
+    }
+
     function setUp() public {
         deployFreshManagerAndRouters();
         deployPosm(manager);
 
-        weth = new MockERC20("Wrapped Ether", "WETH", 18);
-        weth.mint(address(this), WETH_AMOUNT);
+        // pin WETH at a high address so the token is always currency0, matching
+        // the on-chain rehearsal where the rounding bug appeared
+        address wethAddr = address(uint160(type(uint160).max) - 1);
+        deployCodeTo(
+            "MockERC20.sol:MockERC20", abi.encode("Wrapped Ether", "WETH", uint8(18)), wethAddr
+        );
+        weth = MockERC20(wethAddr);
+        weth.mint(address(this), _wethAmount());
 
         r = DeployLib.run(
             DeployLib.Params({
@@ -32,7 +43,7 @@ contract DeployFlowTest is PosmTestSetup {
                 positionManager: lpm,
                 permit2: permit2,
                 weth: IERC20(address(weth)),
-                wethAmount: WETH_AMOUNT,
+                wethAmount: _wethAmount(),
                 sqrtPriceX96: 0, // exercise the auto-derived price path
                 create2Deployer: address(this),
                 calendarOverride: address(0)
@@ -110,5 +121,15 @@ contract DeployFlowTest is PosmTestSetup {
         assertEq(r.calendar.owner(), address(this));
         assertEq(r.lock.owner(), address(this));
         assertEq(r.calendar.lastCalendarYear(), 2027);
+    }
+}
+
+/// @notice Regression for the testnet rehearsal failure: at a launch-like
+///         skewed ratio (full supply vs a tiny WETH amount) the mint's
+///         round-up made SETTLE_PAIR pull more token than the entire supply,
+///         reverting with TRANSFER_FROM_FAILED. Reruns the whole suite.
+contract DeployFlowSkewedTest is DeployFlowTest {
+    function _wethAmount() internal pure override returns (uint256) {
+        return 1e15; // 0.001 WETH vs 1.792e27 token
     }
 }

@@ -107,6 +107,10 @@ library DeployLib {
             tokenIs0 ? tokenAmount : p.wethAmount,
             tokenIs0 ? p.wethAmount : tokenAmount
         );
+        // 1 ppm margin: the mint's round-up must never require more than the
+        // full supply we actually hold (bit us on testnet at skewed ratios).
+        // The unused sliver ends up as dust and is burned after the deploy.
+        liquidity -= uint128(liquidity / 1_000_000) + 1;
 
         r.tokenId = p.positionManager.nextTokenId();
         bytes memory actions =
