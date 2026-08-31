@@ -83,6 +83,29 @@ lock code as the real launch. ALL PROVEN WITH REAL TRANSACTIONS:
 - `collectFees` paid exactly 1% of swap volume to the recipient
   (tx `0x013b6398c7c8...`)
 
+## Real NYSE-hours verification (2026-08-31, Monday 13:47 ET)
+
+The last thing the rehearsals could not do until the exchange was actually
+open with someone at the keyboard: a real trade against the REAL NYSE
+calendar instance (`0xdC9A...E693`), not a compressed test schedule.
+
+- BUY during open hours: 0.00001 WETH -> 5,894,149 TRADFI ✓
+- SELL back during open hours: 2,000,000 TRADFI -> 0.0000033 WETH ✓
+  (the honeypot question, answered on-chain: you can get out)
+- The calendar's own answers for that trading day, read live from the chain:
+
+  | ET time | isMarketOpenAt |
+  |---|---|
+  | 09:29:59 | false |
+  | 09:30:00 | **true** |
+  | 15:59:59 | **true** |
+  | 16:00:00 | false |
+  | 20:00 | false |
+
+Every gate in the design is now proven with real transactions: closed →
+`MarketClosed(nextOpen)`, open → trades both directions, fees collectable,
+liquidity locked. Nothing about the mechanic is untested.
+
 Lessons folded back into the code/runbook:
 - WETH is CONSUMED by each deploy — check the deployer's WETH balance before
   every rehearsal run (preflight.ps1 prints it; read the number!).

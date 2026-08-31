@@ -46,8 +46,10 @@ contract SwapTestScript is Script {
             tickSpacing: 200,
             hooks: IHooks(hook)
         });
-        // WETH in: zeroForOne iff WETH is currency0
-        bool zeroForOne = !tokenIs0;
+        // Buy spends WETH; SWAP_SELL=1 sells TRADFI back, which is the
+        // question every buyer actually has: can I get out again?
+        bool sell = vm.envOr("SWAP_SELL", uint256(0)) == 1;
+        bool zeroForOne = sell ? tokenIs0 : !tokenIs0;
 
         vm.startBroadcast();
         PoolSwapTest router;
@@ -63,6 +65,7 @@ contract SwapTestScript is Script {
         IERC20(tradfi).approve(address(router), type(uint256).max);
 
         uint256 tradfiBefore = IERC20(tradfi).balanceOf(msg.sender);
+        uint256 wethBefore = IERC20(weth).balanceOf(msg.sender);
         router.swap(
             key,
             SwapParams({
@@ -77,6 +80,11 @@ contract SwapTestScript is Script {
         );
         vm.stopBroadcast();
 
-        console2.log("TRADFI received:", IERC20(tradfi).balanceOf(msg.sender) - tradfiBefore);
+        if (sell) {
+            console2.log("TRADFI sold:", tradfiBefore - IERC20(tradfi).balanceOf(msg.sender));
+            console2.log("WETH received:", IERC20(weth).balanceOf(msg.sender) - wethBefore);
+        } else {
+            console2.log("TRADFI received:", IERC20(tradfi).balanceOf(msg.sender) - tradfiBefore);
+        }
     }
 }
